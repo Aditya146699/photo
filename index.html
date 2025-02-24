@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <title>AILERY</title>
+    <style>
+        :root {
+            --primary-bg: #000000;
+            --modal-bg: rgba(12, 12, 12, 0.95);
+            --text-color: #ffffff;
+            --border-radius: 7px;
+            --spacing: 10px;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .modal {
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            background-color: var(--modal-bg);
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            height: auto;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: var(--border-radius);
+            object-fit: contain;
+        }
+
+        .modal-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: var(--spacing);
+        }
+
+        .modal-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 10px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 1.2rem;
+        }
+
+        .modal-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .gallery {
+            width: 95%;
+            margin: 20px auto;
+            column-count: 4;
+            column-gap: var(--spacing);
+        }
+
+        .gallery-item {
+            break-inside: avoid;
+            margin-bottom: var(--spacing);
+        }
+
+        .gallery-image {
+            width: 100%;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .gallery-image:hover {
+            transform: scale(1.02);
+        }
+
+        .load-more {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 24px;
+            background: transparent;
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+
+        .load-more:hover {
+            background: var(--text-color);
+            color: var(--primary-bg);
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--text-color);
+            padding: 20px;
+            display: none;
+        }
+
+        @media (max-width: 1200px) {
+            .gallery {
+                column-count: 4;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .gallery {
+                column-count: 3;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .gallery {
+                column-count: 2;
+            }
+        }
+
+        @media (max-width: 300px) {
+            .gallery {
+                column-count: 1;
+            }
+        }
+
+        .front-page {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1100;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="front-page" id="frontPage">
+        <h1>Welcome to AILERY</h1>
+        <p>Get ready to explore the world of AI-generated images.</p>
+    </div>
+
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <img class="modal-image" src="" alt="Full size image">
+            <div class="modal-controls">
+                <button class="modal-button" id="downloadBtn" title="Download">
+                    <i class="fas fa-download"></i>
+                </button>
+                <button class="modal-button" id="closeBtn" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+    <div class="loading" id="loading">Loading images...</div>
+    <button class="load-more" id="loadMore">Load More</button>
+
+    <script>
+        const gallery = document.getElementById('gallery');
+        const modal = document.getElementById('imageModal');
+        const modalImg = modal.querySelector('.modal-image');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const loadMoreBtn = document.getElementById('loadMore');
+        const loadingEl = document.getElementById('loading');
+        const frontPage = document.getElementById('frontPage');
+
+        let currentPage = "https://civitai.com/api/v1/images?limit=100&sort=Most Reactions&nsfw=None";
+
+        async function downloadImage(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const filename = url.split('/').pop() || 'image.png';
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Failed to download image. Please try again.');
+            }
+        }
+
+        function openimg(pic) {
+            imgopen.src = pic;
+
+            var img = new Image();
+            img.src = pic;
+
+            img.onload = function () {
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                var dataUrl = canvas.toDataURL('image/png'); // Convert to PNG format
+
+                Imglink.href = dataUrl;
+                Imglink.download = pic.split('/').pop().split('?')[0] + ".png"; // Save as PNG with the original file name
+            };
+
+            document.querySelector('.openimgs').style.display = 'flex';
+        }
+
+        function openModal(imgUrl) {
+            modal.style.display = 'flex';
+            modalImg.src = imgUrl;
+            downloadBtn.onclick = () => downloadImage(imgUrl);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            modalImg.src = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function loadImages() {
+            try {
+                loadingEl.style.display = 'block';
+                loadMoreBtn.disabled = true;
+
+                const response = await fetch(currentPage);
+                const data = await response.json();
+
+                data.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'gallery-item';
+                    div.innerHTML = `
+                        <img 
+                            class="gallery-image" 
+                            src="${item.url}" 
+                            alt="${item.meta?.prompt || 'AI Generated Image'}"
+                            loading="lazy"
+                            onclick="openModal('${item.url}')"
+                        >
+                    `;
+                    gallery.appendChild(div);
+                });
+
+                currentPage = data.metadata.nextPage;
+                loadMoreBtn.disabled = false;
+                loadingEl.style.display = 'none';
+            } catch (error) {
+                console.error('Failed to load images:', error);
+                loadingEl.textContent = 'Failed to load images. Please try again.';
+                loadMoreBtn.disabled = false;
+            }
+        }
+
+        // Event Listeners
+        loadMoreBtn.addEventListener('click', loadImages);
+        closeBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Hide front page after 10 seconds
+        setTimeout(() => {
+            frontPage.classList.add('hidden');
+        }, 10000);
+
+        // Initial load
+        loadImages();
+    </script>
+</body>
+
+</html>
